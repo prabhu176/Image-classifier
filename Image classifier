@@ -1,0 +1,307 @@
+Developing an AI application
+Going forward, AI algorithms will be incorporated into more and more everyday applications. For example, you might want to include an image classifier in a smart phone app. To do this, you'd use a deep learning model trained on hundreds of thousands of images as part of the overall application architecture. A large part of software development in the future will be using these types of models as common parts of applications.
+
+In this project, you'll train an image classifier to recognize different species of flowers. You can imagine using something like this in a phone app that tells you the name of the flower your camera is looking at. In practice you'd train this classifier, then export it for use in your application. We'll be using this dataset of 102 flower categories, you can see a few examples below.
+
+<img src='assets/Flowers.png' width=500px>
+
+The project is broken down into multiple steps:
+
+Load and preprocess the image dataset
+Train the image classifier on your dataset
+Use the trained classifier to predict image content
+We'll lead you through each part which you'll implement in Python.
+
+When you've completed this project, you'll have an application that can be trained on any set of labeled images. Here your network will be learning about flowers and end up as a command line application. But, what you do with your new skills depends on your imagination and effort in building a dataset. For example, imagine an app where you take a picture of a car, it tells you what the make and model is, then looks up information about it. Go build your own dataset and make something new.
+
+First up is importing the packages you'll need. It's good practice to keep all the imports at the beginning of your code. As you work through this notebook and find you need to import a package, make sure to add the import up here.
+
+In [79]:
+# Imports here
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from torch import nn
+from torch import optim
+import torch.nn.functional as F
+from torchvision import datasets, transforms, models
+import torchvision.models as models
+from PIL import Image
+import json
+from matplotlib.ticker import FormatStrFormatter
+Load the data
+Here you'll use torchvision to load the data (documentation). The data should be included alongside this notebook, otherwise you can download it here. The dataset is split into three parts, training, validation, and testing. For the training, you'll want to apply transformations such as random scaling, cropping, and flipping. This will help the network generalize leading to better performance. You'll also need to make sure the input data is resized to 224x224 pixels as required by the pre-trained networks.
+
+The validation and testing sets are used to measure the model's performance on data it hasn't seen yet. For this you don't want any scaling or rotation transformations, but you'll need to resize then crop the images to the appropriate size.
+
+The pre-trained networks you'll use were trained on the ImageNet dataset where each color channel was normalized separately. For all three sets you'll need to normalize the means and standard deviations of the images to what the network expects. For the means, it's [0.485, 0.456, 0.406] and for the standard deviations [0.229, 0.224, 0.225], calculated from the ImageNet images. These values will shift each color channel to be centered at 0 and range from -1 to 1.
+
+In [80]:
+data_dir = 'flowers'
+train_dir = data_dir + '/train'
+valid_dir = data_dir + '/valid'
+test_dir = data_dir + '/test'
+In [81]:
+# TODO: Define your transforms for the training, validation, and testing sets
+train_transforms = transforms.Compose([transforms.RandomRotation(30),
+                                       transforms.RandomResizedCrop(224),
+                                       transforms.RandomHorizontalFlip(),
+                                       transforms.ToTensor(),
+                                       transforms.Normalize([0.485, 0.456, 0.406], 
+                                                            [0.229, 0.224, 0.225])])
+
+test_transforms = transforms.Compose([transforms.Resize(256),
+                                      transforms.CenterCrop(224),
+                                      transforms.ToTensor(),
+                                      transforms.Normalize([0.485, 0.456, 0.406], 
+                                                           [0.229, 0.224, 0.225])])
+validation_transforms = transforms.Compose([transforms.Resize(256),
+                                            transforms.CenterCrop(224),
+                                            transforms.ToTensor(),
+                                            transforms.Normalize([0.485, 0.456, 0.406], 
+                                                                 [0.229, 0.224, 0.225])])
+
+
+# TODO: Load the datasets with ImageFolder
+train_data = datasets.ImageFolder(train_dir, transform=train_transforms)
+validation_data = datasets.ImageFolder(valid_dir, transform=validation_transforms)
+test_data = datasets.ImageFolder(test_dir ,transform = test_transforms)
+
+# TODO: Using the image datasets and the trainforms, define the dataloaders
+trainloader = torch.utils.data.DataLoader(train_data, batch_size=64, shuffle=True)
+vloader = torch.utils.data.DataLoader(validation_data, batch_size =32,shuffle = True)
+testloader = torch.utils.data.DataLoader(test_data, batch_size = 20, shuffle = True)
+Label mapping
+You'll also need to load in a mapping from category label to category name. You can find this in the file cat_to_name.json. It's a JSON object which you can read in with the json module. This will give you a dictionary mapping the integer encoded categories to the actual names of the flowers.
+
+In [82]:
+import json
+
+with open('cat_to_name.json', 'r') as f:
+    cat_to_name = json.load(f)
+Building and training the classifier
+Now that the data is ready, it's time to build and train the classifier. As usual, you should use one of the pretrained models from torchvision.models to get the image features. Build and train a new feed-forward classifier using those features.
+
+We're going to leave this part up to you. If you want to talk through it with someone, chat with your fellow students! You can also ask questions on the forums or join the instructors in office hours.
+
+Refer to the rubric for guidance on successfully completing this section. Things you'll need to do:
+
+Load a pre-trained network (If you need a starting point, the VGG networks work great and are straightforward to use)
+Define a new, untrained feed-forward network as a classifier, using ReLU activations and dropout
+Train the classifier layers using backpropagation using the pre-trained network to get the features
+Track the loss and accuracy on the validation set to determine the best hyperparameters
+We've left a cell open for you below, but use as many as you need. Our advice is to break the problem up into smaller parts you can run separately. Check that each part is doing what you expect, then move on to the next. You'll likely find that as you work through each part, you'll need to go back and modify your previous code. This is totally normal!
+
+When training make sure you're updating only the weights of the feed-forward network. You should be able to get the validation accuracy above 70% if you build everything right. Make sure to try different hyperparameters (learning rate, units in the classifier, epochs, etc) to find the best model. Save those hyperparameters to use as default values in the next part of the project.
+
+In [ ]:
+# TODO: Build and train your network
+In [83]:
+structures = {"vgg16":25088,
+              "densenet121" : 1024,
+              "alexnet" : 9216 }
+In [88]:
+def nn_setup(structure='vgg16',dropout=0.5, hidden_layer1 = 120,lr = 0.001):
+    
+    
+    if structure == 'vgg16':
+        model = models.vgg16(pretrained=True)        
+    elif structure == 'densenet121':
+        model = models.densenet121(pretrained=True)
+    elif structure == 'alexnet':
+        model = models.alexnet(pretrained = True)
+    else:
+        print("Im sorry but {} is not a valid model.Did you mean vgg16,densenet121,or alexnet?".format(structure))
+        
+    
+        
+    for param in model.parameters():
+        param.requires_grad = False
+        from collections import OrderedDict
+        classifier = nn.Sequential(OrderedDict([
+            ('dropout',nn.Dropout(dropout)),
+            ('inputs', nn.Linear(structures[structure], hidden_layer1)),
+            ('relu1', nn.ReLU()),
+            ('hidden_layer1', nn.Linear(hidden_layer1, 90)),
+            ('relu2',nn.ReLU()),
+            ('hidden_layer2',nn.Linear(90,80)),
+            ('relu3',nn.ReLU()),
+            ('hidden_layer3',nn.Linear(80,102)),
+            ('output', nn.LogSoftmax(dim=1))
+                          ]))
+        
+        
+        model.classifier = classifier
+        criterion = nn.NLLLoss()
+        optimizer = optim.Adam(model.classifier.parameters(), lr )
+        model.cuda()
+        
+        return model , optimizer ,criterion 
+
+    
+
+model,optimizer,criterion = nn_setup('densenet121')
+/opt/conda/lib/python3.6/site-packages/torchvision-0.2.1-py3.6.egg/torchvision/models/densenet.py:212: UserWarning: nn.init.kaiming_normal is now deprecated in favor of nn.init.kaiming_normal_.
+  nn.init.kaiming_normal(m.weight.data)
+In [89]:
+# Putting the above into functions, so they can be used later
+
+epochs = 12
+print_every = 5
+steps = 0
+loss_show=[]
+# change to cuda
+model.to('cuda')
+
+for e in range(epochs):
+    running_loss = 0
+    for ii, (inputs, labels) in enumerate(trainloader):
+        steps += 1
+        
+        inputs,labels = inputs.to('cuda'), labels.to('cuda')
+        
+        optimizer.zero_grad()
+        
+        # Forward and backward passes
+        outputs = model.forward(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        
+        running_loss += loss.item()
+        
+        if steps % print_every == 0:
+            model.eval()
+            vlost = 0
+            accuracy=0
+            
+            
+            for ii, (inputs2,labels2) in enumerate(vloader):
+                optimizer.zero_grad()
+                
+                inputs2, labels2 = inputs2.to('cuda:0') , labels2.to('cuda:0')
+                model.to('cuda:0')
+                with torch.no_grad():    
+                    outputs = model.forward(inputs2)
+                    vlost = criterion(outputs,labels2)
+                    ps = torch.exp(outputs).data
+                    equality = (labels2.data == ps.max(1)[1])
+                    accuracy += equality.type_as(torch.FloatTensor()).mean()
+                    
+            vlost = vlost / len(vloader)
+            accuracy = accuracy /len(vloader)
+            print("Epoch: {}/{}... ".format(e+1, epochs),
+                  "Loss: {:.4f}".format(running_loss/print_every),
+                  "Validation Lost {:.4f}".format(vlost),
+                   "Accuracy: {:.4f}".format(accuracy))
+            
+            
+            running_loss = 0
+Epoch: 1/12...  Loss: 4.6087 Validation Lost 0.1762 Accuracy: 0.0130
+Epoch: 1/12...  Loss: 4.5909 Validation Lost 0.1777 Accuracy: 0.0262
+Epoch: 1/12...  Loss: 4.5711 Validation Lost 0.1769 Accuracy: 0.0252
+Epoch: 1/12...  Loss: 4.5615 Validation Lost 0.1693 Accuracy: 0.0252
+Epoch: 1/12...  Loss: 4.5350 Validation Lost 0.1734 Accuracy: 0.0433
+Epoch: 1/12...  Loss: 4.5068 Validation Lost 0.1785 Accuracy: 0.0421
+Epoch: 1/12...  Loss: 4.4272 Validation Lost 0.1741 Accuracy: 0.0262
+Epoch: 1/12...  Loss: 4.4266 Validation Lost 0.1679 Accuracy: 0.0349
+Epoch: 1/12...  Loss: 4.3663 Validation Lost 0.1680 Accuracy: 0.0538
+Epoch: 1/12...  Loss: 4.3493 Validation Lost 0.1637 Accuracy: 0.0550
+Epoch: 1/12...  Loss: 4.3062 Validation Lost 0.1500 Accuracy: 0.0836
+Epoch: 1/12...  Loss: 4.2458 Validation Lost 0.1623 Accuracy: 0.0944
+Epoch: 1/12...  Loss: 4.0781 Validation Lost 0.1582 Accuracy: 0.0920
+Epoch: 1/12...  Loss: 3.9921 Validation Lost 0.1408 Accuracy: 0.1353
+Epoch: 1/12...  Loss: 3.9319 Validation Lost 0.1518 Accuracy: 0.1723
+Epoch: 1/12...  Loss: 3.8340 Validation Lost 0.1422 Accuracy: 0.1728
+Epoch: 1/12...  Loss: 3.8202 Validation Lost 0.1326 Accuracy: 0.2030
+Epoch: 1/12...  Loss: 3.5616 Validation Lost 0.1347 Accuracy: 0.1814
+Epoch: 1/12...  Loss: 3.5369 Validation Lost 0.1424 Accuracy: 0.2201
+Epoch: 1/12...  Loss: 3.2145 Validation Lost 0.1169 Accuracy: 0.2390
+Epoch: 2/12...  Loss: 1.2227 Validation Lost 0.1135 Accuracy: 0.2838
+Epoch: 2/12...  Loss: 3.1616 Validation Lost 0.1042 Accuracy: 0.3080
+Epoch: 2/12...  Loss: 3.0749 Validation Lost 0.1124 Accuracy: 0.3097
+Epoch: 2/12...  Loss: 2.8441 Validation Lost 0.1175 Accuracy: 0.3256
+Epoch: 2/12...  Loss: 2.6524 Validation Lost 0.1035 Accuracy: 0.3373
+Epoch: 2/12...  Loss: 2.6897 Validation Lost 0.0857 Accuracy: 0.3906
+Epoch: 2/12...  Loss: 2.5215 Validation Lost 0.0914 Accuracy: 0.3616
+Epoch: 2/12...  Loss: 2.5883 Validation Lost 0.0968 Accuracy: 0.4332
+Epoch: 2/12...  Loss: 2.5268 Validation Lost 0.0992 Accuracy: 0.4419
+Epoch: 2/12...  Loss: 2.4186 Validation Lost 0.0886 Accuracy: 0.4426
+Epoch: 2/12...  Loss: 2.4839 Validation Lost 0.0639 Accuracy: 0.4286
+Epoch: 2/12...  Loss: 2.1187 Validation Lost 0.0954 Accuracy: 0.4939
+Epoch: 2/12...  Loss: 2.2390 Validation Lost 0.0611 Accuracy: 0.4793
+Epoch: 2/12...  Loss: 2.0474 Validation Lost 0.0771 Accuracy: 0.5123
+Epoch: 2/12...  Loss: 2.0602 Validation Lost 0.0577 Accuracy: 0.4973
+Epoch: 2/12...  Loss: 2.1563 Validation Lost 0.0443 Accuracy: 0.5146
+Epoch: 2/12...  Loss: 2.0495 Validation Lost 0.0667 Accuracy: 0.5483
+Epoch: 2/12...  Loss: 1.8448 Validation Lost 0.0649 Accuracy: 0.5697
+Epoch: 2/12...  Loss: 1.8842 Validation Lost 0.0518 Accuracy: 0.5650
+Epoch: 2/12...  Loss: 2.0175 Validation Lost 0.0788 Accuracy: 0.5601
+Epoch: 2/12...  Loss: 1.9578 Validation Lost 0.0638 Accuracy: 0.5640
+Epoch: 3/12...  Loss: 1.5040 Validation Lost 0.0705 Accuracy: 0.5385
+Epoch: 3/12...  Loss: 1.6282 Validation Lost 0.0567 Accuracy: 0.5809
+Epoch: 3/12...  Loss: 1.6637 Validation Lost 0.0592 Accuracy: 0.5891
+Epoch: 3/12...  Loss: 1.6316 Validation Lost 0.0513 Accuracy: 0.5911
+Epoch: 3/12...  Loss: 1.7526 Validation Lost 0.0534 Accuracy: 0.6242
+Epoch: 3/12...  Loss: 1.7241 Validation Lost 0.0656 Accuracy: 0.6454
+Epoch: 3/12...  Loss: 1.5842 Validation Lost 0.0449 Accuracy: 0.6249
+Epoch: 3/12...  Loss: 1.6817 Validation Lost 0.0683 Accuracy: 0.6171
+Epoch: 3/12...  Loss: 1.4891 Validation Lost 0.0518 Accuracy: 0.6384
+Epoch: 3/12...  Loss: 1.4508 Validation Lost 0.0383 Accuracy: 0.6501
+Epoch: 3/12...  Loss: 1.5704 Validation Lost 0.0426 Accuracy: 0.6492
+Epoch: 3/12...  Loss: 1.5289 Validation Lost 0.0733 Accuracy: 0.6637
+Epoch: 3/12...  Loss: 1.4848 Validation Lost 0.0311 Accuracy: 0.6366
+Epoch: 3/12...  Loss: 1.5413 Validation Lost 0.0633 Accuracy: 0.6502
+Epoch: 3/12...  Loss: 1.3465 Validation Lost 0.0253 Accuracy: 0.6532
+Epoch: 3/12...  Loss: 1.5210 Validation Lost 0.0499 Accuracy: 0.6230
+Epoch: 3/12...  Loss: 1.6310 Validation Lost 0.0419 Accuracy: 0.6633
+Epoch: 3/12...  Loss: 1.4807 Validation Lost 0.0364 Accuracy: 0.6717
+Epoch: 3/12...  Loss: 1.2378 Validation Lost 0.0751 Accuracy: 0.6289
+Epoch: 3/12...  Loss: 1.4178 Validation Lost 0.0432 Accuracy: 0.6774
+Epoch: 4/12...  Loss: 0.2695 Validation Lost 0.0463 Accuracy: 0.6747
+Epoch: 4/12...  Loss: 1.3352 Validation Lost 0.0748 Accuracy: 0.6931
+Epoch: 4/12...  Loss: 1.3505 Validation Lost 0.0526 Accuracy: 0.6870
+Epoch: 4/12...  Loss: 1.3579 Validation Lost 0.0298 Accuracy: 0.6871
+Epoch: 4/12...  Loss: 1.2668 Validation Lost 0.0375 Accuracy: 0.6954
+Epoch: 4/12...  Loss: 1.1968 Validation Lost 0.0434 Accuracy: 0.7113
+Epoch: 4/12...  Loss: 1.3503 Validation Lost 0.0338 Accuracy: 0.6847
+Epoch: 4/12...  Loss: 1.3910 Validation Lost 0.0605 Accuracy: 0.7005
+Epoch: 4/12...  Loss: 1.4445 Validation Lost 0.0244 Accuracy: 0.7099
+Epoch: 4/12...  Loss: 1.4075 Validation Lost 0.0269 Accuracy: 0.6967
+Epoch: 4/12...  Loss: 1.1101 Validation Lost 0.0516 Accuracy: 0.7302
+Epoch: 4/12...  Loss: 1.3009 Validation Lost 0.0371 Accuracy: 0.7035
+Epoch: 4/12...  Loss: 1.2165 Validation Lost 0.0339 Accuracy: 0.7129
+Epoch: 4/12...  Loss: 1.1452 Validation Lost 0.0304 Accuracy: 0.7369
+Epoch: 4/12...  Loss: 1.3285 Validation Lost 0.0218 Accuracy: 0.7376
+Epoch: 4/12...  Loss: 1.2306 Validation Lost 0.0271 Accuracy: 0.7285
+Epoch: 4/12...  Loss: 1.1360 Validation Lost 0.0396 Accuracy: 0.7228
+Epoch: 4/12...  Loss: 1.1933 Validation Lost 0.0377 Accuracy: 0.7354
+Epoch: 4/12...  Loss: 1.0831 Validation Lost 0.0518 Accuracy: 0.7245
+Epoch: 4/12...  Loss: 1.3279 Validation Lost 0.0460 Accuracy: 0.7305
+Epoch: 4/12...  Loss: 1.2087 Validation Lost 0.0331 Accuracy: 0.7403
+Epoch: 5/12...  Loss: 0.6294 Validation Lost 0.0560 Accuracy: 0.7380
+Epoch: 5/12...  Loss: 1.1518 Validation Lost 0.0285 Accuracy: 0.7213
+Epoch: 5/12...  Loss: 1.1808 Validation Lost 0.0599 Accuracy: 0.7431
+Epoch: 5/12...  Loss: 1.1630 Validation Lost 0.0333 Accuracy: 0.7167
+Epoch: 5/12...  Loss: 1.0688 Validation Lost 0.0314 Accuracy: 0.7201
+Epoch: 5/12...  Loss: 0.9494 Validation Lost 0.0247 Accuracy: 0.7592
+Epoch: 5/12...  Loss: 0.9948 Validation Lost 0.0535 Accuracy: 0.7732
+Epoch: 5/12...  Loss: 0.9490 Validation Lost 0.0318 Accuracy: 0.7778
+Epoch: 5/12...  Loss: 0.9385 Validation Lost 0.0276 Accuracy: 0.7670
+Epoch: 5/12...  Loss: 1.0083 Validation Lost 0.0260 Accuracy: 0.7634
+Epoch: 5/12...  Loss: 1.1132 Validation Lost 0.0249 Accuracy: 0.7727
+Epoch: 5/12...  Loss: 0.9419 Validation Lost 0.0212 Accuracy: 0.7688
+Epoch: 5/12...  Loss: 1.0816 Validation Lost 0.0252 Accuracy: 0.7511
+Epoch: 5/12...  Loss: 1.0044 Validation Lost 0.0396 Accuracy: 0.7675
+Epoch: 5/12...  Loss: 0.9989 Validation Lost 0.0216 Accuracy: 0.7655
+Epoch: 5/12...  Loss: 0.9857 Validation Lost 0.0300 Accuracy: 0.7682
+Epoch: 5/12...  Loss: 0.8666 Validation Lost 0.0220 Accuracy: 0.7607
+Epoch: 5/12...  Loss: 1.0170 Validation Lost 0.0565 Accuracy: 0.7591
+Epoch: 5/12...  Loss: 0.9338 Validation Lost 0.0403 Accuracy: 0.7300
+Epoch: 5/12...  Loss: 1.1452 Validation Lost 0.0315 Accuracy: 0.7796
+Epoch: 5/12...  Loss: 0.8734 Validation Lost 0.0224 Accuracy: 0.7778
+Epoch: 6/12...  Loss: 0.9588 Validation Lost 0.0401 Accuracy: 0.7742
+Epoch: 6/12...  Loss: 1.1393 Validation Lost 0.0257 Accuracy: 0.7751
+Epoch: 6/12...  Loss: 0.9754 Validation Lost 0.0309 Accuracy: 0.7847
+Epoch: 6/12...  Loss: 1.0893 Validation Lost 0.0330 Accuracy: 0.7543
+Epoch: 6/12...  Loss: 1.0468 Validation Lost 0.0258 Accuracy: 0.7794
